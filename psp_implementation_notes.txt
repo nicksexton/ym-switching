@@ -1,0 +1,25 @@
+Discretizing model behaviour - possible output patterns
+
+Factors:
+Task (A, B) - Word Reading vs. Colour Naming
+Switch (0, 1) Repeat vs. Switch 
+
+Stim Valency (V0,V1) - neutral vs. incongruent 
+Response Set Overlap (R0,R1) - non-overlapping vs. overlapping
+Stim onset (o0,o1) - synchronous vs. delayed 
+Response Gating (G0,G1) - not gated vs. gated
+
+Empirical: other possibilities
+0 < 1 : 0 = 1, 0 > 1 : Switch Cost -1, 0, 1
+A < B : A = B, A > B : Task Difficulty -1, 0, 1
+(A,1) - (A,0) > (B,1) - (B,0) : Asymmetric Switch Cost -1, 0, 1
+
+
+
+
+Same effects for neutral and incongruent stimuli, but RTs lower (effects smaller) for neutral
+
+
+basic effect 	 [1,1,1], (V1,R1,o0) 	 [1,1,1] (V0,R1,o0)  - figure 6
+delayed onset 	 [1,1,-1], (V1,R1,o1) 	 [1,1,-1] (V0,R1,o1) - figure 6
+response gating  [1,1,-1], (v1,R0,o0) 	 [1,1,-1] (V0,R0,o0) - figure 7
