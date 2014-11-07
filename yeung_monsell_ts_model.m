@@ -69,7 +69,7 @@ end
 
 
 function rt = calc_rt (activation, f_gradient, gauss_mean, gauss_sd, 
-		       exp_lambda, threshold, constant, irrelevant_stimulus_onset)
+		       exp_lambda, threshold, constant, irrelevant_stimulus_onset, response_gating)
 
   constant
   generation_time = calc_generation_time (activation, threshold)
@@ -99,7 +99,8 @@ function rt = run_trial ( params )
     input = repmat(params.TASKSTRENGTH, 1, 4) + params.CONTROL + params.PRIMING;
     act = calc_activation (input, params.NOISE_MEAN, params.NOISE_SD, params.INPUT_C);
     rt = calc_rt (act, params.F_GRADIENT, params.EXG_GAUSS_MEAN, params.EXG_GAUSS_SD, ...
-		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET);
+		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET, 
+		  params.RESPONSE_GATING);
 
 
 end
@@ -236,8 +237,6 @@ end
 control_default = [0.00, 0.00, 0.97, 0.38;
 		   0.20, 0.15, 0.00, 0.00];
 
-control_delayedonset = [0.00, 0.00, 0.15, 0.15;
-			0.15, 0.15, 0.00, 0.00]
 
 stim_onset = 160
 stim_onset_asynchronous = [stim_onset, stim_onset, 0, 0;
@@ -260,36 +259,21 @@ params_default = struct('INPUT_C', 1.5, ...
 		'CONTROL', control_default,
 		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
 			    0.0, 0.3, 0.3, 0.0 ],
-		'IRRELEVANT_STIM_ONSET', stim_onset_synchronous)
+		'IRRELEVANT_STIM_ONSET', stim_onset_synchronous,
+		'RESPONSE_GATING', [1, 1, 1, 1; 
+				    1, 1, 1 1])
 
 
-params_delayedonset = struct('INPUT_C', 1.5, ...
-		'NOISE_MEAN', 0.0, ...
-		'NOISE_SD', 0.1, ...
-		'THRESHOLD', 100, ...
-		'F_GRADIENT', 0.5, ...
-		'EXG_GAUSS_MEAN', 140, ...
-		'EXG_GAUSS_SD', 10, ...
-		'EXG_EXP_LAMBDA', 40, ...
-		'RT_CONST', 150, ...
-		'TASKSTRENGTH', [0.1; 0.5],
-		'CONTROL', control_delayedonset,
-		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-			    0.0, 0.3, 0.3, 0.0 ],
-		'IRRELEVANT_STIM_ONSET', stim_onset_asynchronous)
+params_neutral = params_default
+params_neutral.F_GRADIENT = 0.0
 
-# for debugging
-params_nonoise = struct('INPUT_C', 1.5, ...
-		'NOISE_MEAN', 0.0, ...
-		'NOISE_SD', 0.0, ...
-		'THRESHOLD', 100, ...
-		'F_GRADIENT', 0.5, ...
-		'EXG_GAUSS_MEAN', 140, ...
-		'EXG_GAUSS_SD', 0, ...
-		'EXG_EXP_LAMBDA', 40, ...
-		'RT_CONST', 150, ...
-		'TASKSTRENGTH', [0.1; 0.5],
-		'CONTROL', control_default,
-		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-			    0.0, 0.3, 0.3, 0.0 ],
-		'IRRELEVANT_STIM_ONSET', stim_onset_synchronous)
+
+params_delayedonset = params_default
+params_delayedonset.CONTROL = [0.00, 0.00, 0.15, 0.15;
+			       0.15, 0.15, 0.00, 0.00]
+		     
+
+
+params_responsegating = params_default
+params_responsegating.RESPONSE_GATING = [0, 0, 1, 1; 
+					 1, 1, 0 0]

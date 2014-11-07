@@ -5,9 +5,9 @@ Task (A, B) - Word Reading vs. Colour Naming
 Switch (0, 1) Repeat vs. Switch 
 
 Stim Valency (V0,V1) - neutral vs. incongruent 
-Response Set Overlap (R0,R1) - non-overlapping vs. overlapping
+Response Set Overlap (R0,R1) - non-overlapping (response gated) vs. overlapping (not gated)
 Stim onset (o0,o1) - synchronous vs. delayed 
-Response Gating (G0,G1) - not gated vs. gated
+
 
 Empirical: other possibilities
 0 < 1 : 0 = 1, 0 > 1 : Switch Cost -1, 0, 1
@@ -23,3 +23,22 @@ Same effects for neutral and incongruent stimuli, but RTs lower (effects smaller
 basic effect 	 [1,1,1], (V1,R1,o0) 	 [1,1,1] (V0,R1,o0)  - figure 6
 delayed onset 	 [1,1,-1], (V1,R1,o1) 	 [1,1,-1] (V0,R1,o1) - figure 6
 response gating  [1,1,-1], (v1,R0,o0) 	 [1,1,-1] (V0,R0,o0) - figure 7
+
+
+
+
+
+
+
+Implementation in the model:
+Stim Valency - (1) modification of eqn 1 (input) - input = k(strength + priming) + control + noise, k=0.6 NOT IMPL
+               (2) value of F changed from 0.5 to 0. IMPL
+	       Neutral stimuli therefore involve changes to input AND response resolution process  
+
+Response Set Overlap - Response Gating - only relevant stimuli enter response resolution NOT IMPL
+
+Stim Onset - (1) modified control inputs IMPL
+             (2) add 160 to response generation times for irrelevant stimuli during response resolution process IMPL
+
+
+
