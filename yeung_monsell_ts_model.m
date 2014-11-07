@@ -11,88 +11,97 @@ end
   
 
 function generation_rate = calc_generation_rate (activation)
-  % activation is a column vector
 
-  generation_rate = zeros(rows(activation),1);
   total_activation = sum(activation);
+  generation_rate = activation ./ repmat(total_activation, 2, 1);
 
-  for i = 1:rows(activation)
-    generation_rate(i,1) = activation(i,1) / total_activation;
-  end
 end
 
 
 function generation_time = calc_generation_time (activation, threshold)
-% threshold is parameter
 
-  generation_time = zeros (rows(activation),1);
   generation_rate = calc_generation_rate (activation);
+  generation_time = repmat(threshold, 2, 4)./generation_rate;
 
-  for i = 1:rows(generation_rate)
-    generation_time(i,1) = threshold/generation_rate(i,1);
-  end
 end
 
-function f = calc_f (x, gradient)
+
+function f = calc_f (r_minus_gen_time_diff, gradient)
     % gradient needs to be fitted? for congruent stimuli, =0, for incongruent =0.5
-    if (x > 0)
-      f = x * gradient;
+    if (r_minus_gen_time_diff > 0)
+      f = r_minus_gen_time_diff * gradient;
     else
       f = 0;
     endif
 end
 
 
-function resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, exp_lambda)
-				% column vector generation time
+function resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
+						 exp_lambda, irrelevant_stimulus_onset)
 
-				%generate random number from ex-gaussian distribution 
-      r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda);
-    
-				% gradient needs to be fitted? for congruent stimuli, =0, for incongruent =0.5
-      resolution_time = r + calc_f (r - generation_time(1,1) - generation_time(2,1), f_gradient);
+				%r generates random number from ex-gaussian distribution 
+  # Is r generated independently for each task? Each trial?
+#     generation_time_difference = [1, 1, -1, -1; 1, 1, -1, -1] .* [generation_time(2,:) - generation_time(1,:);
+#   								   generation_time(1,:) - generation_time(2,:)]  
+     # flip the signs for colour naming, 
+
+  generation_time_plus_onset = generation_time + irrelevant_stimulus_onset
+
+  generation_time_difference = [generation_time_plus_onset(2,:) - generation_time_plus_onset(1,:);
+   				generation_time_plus_onset(1,:) - generation_time_plus_onset(2,:)]
+  
+				# insert r here if it is drawn once for all trials
+  r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda) # Calculating for each trial
+
+      resolution_time = zeros(2, 4);
+      for j = 1:columns(resolution_time)
+
+	for i = 1:rows(resolution_time)
+
+				# Where is r recalculated?? 
+	                        # Insert here if it is drawn individually for both tasks
+	  resolution_time(i,j) = r + calc_f (r - generation_time_difference(i,j), f_gradient);
+	end
+      end
+      resolution_time
 end
 
 
 
-function rt = calc_rt (activation, f_gradient, gauss_mean, gauss_sd, exp_lambda, threshold, constant)
+function rt = calc_rt (activation, f_gradient, gauss_mean, gauss_sd, 
+		       exp_lambda, threshold, constant, irrelevant_stimulus_onset)
 
-  generation_time = calc_generation_time (activation, threshold);
-  rt =  constant + generation_time + ...
-      calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, exp_lambda);
+  constant
+  generation_time = calc_generation_time (activation, threshold)
+  resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
+					  exp_lambda, irrelevant_stimulus_onset)
+
+  rt =  constant + generation_time + resolution_time
+  
 
 end
 
 
-    % task parameters
-params = struct('INPUT_C', 1.5, ...
-		'NOISE_MEAN', 0.0, ...
-		'NOISE_SD', 0.1, ...
-		'THRESHOLD', 100, ...
-		'F_GRADIENT', 0.5, ...
-		'EXG_GAUSS_MEAN', 140, ...
-		'EXG_GAUSS_SD', 10, ...
-		'EXG_EXP_LAMBDA', 40, ...
-		'RT_CONST', 150, ...
-		'TASKSTRENGTH', [0.1; 0.5],
-		'CONTROL', [0.00, 0.00, 0.97, 0.38;
-			    0.20, 0.15, 0.00, 0.00],
-		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-			    0.0, 0.3, 0.3, 0.0 ])
 
-
-function rt = run_trial (taskstrength, control, priming, noise_mean, noise_sd, input_c, f_gradient, ...
-			 exg_gauss_mean, exg_gauss_sd, exg_exp_lambda, threshold, rt_const)
+# function rt = run_trial (taskstrength, control, priming, noise_mean, noise_sd, input_c, f_gradient, ...
+# 			 exg_gauss_mean, exg_gauss_sd, exg_exp_lambda, threshold, rt_const)
+function rt = run_trial ( params )
 
   input = zeros (2, 4);
   act = zeros (2, 4);
   rt = zeros (2, 4);
-  for i = 1:columns(input)
-    input(:,i) = taskstrength(:,1) + control(:,i) + priming(:,i);
-    act(:,i) = calc_activation (input(:,i), noise_mean, noise_sd, input_c);
-    rt(:,i) = calc_rt (act(:,i), f_gradient, exg_gauss_mean, exg_gauss_sd, ...
-		       exg_exp_lambda, threshold, rt_const);
-  end
+#  for i = 1:columns(input)
+#    input = repmat(params.TASKSTRENGTH, 1, 4) + params.CONTROL(:,i) + params.PRIMING(:,i)
+#    act = calc_activation (input(:,i), params.NOISE_MEAN, params.NOISE_SD, params.INPUT_C)
+#    rt = calc_rt (act(:,i), params.F_GRADIENT, params.EXG_GAUSS_MEAN, params.EXG_GAUSS_SD, ...
+#		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET)
+#  end
+    input = repmat(params.TASKSTRENGTH, 1, 4) + params.CONTROL + params.PRIMING;
+    act = calc_activation (input, params.NOISE_MEAN, params.NOISE_SD, params.INPUT_C);
+    rt = calc_rt (act, params.F_GRADIENT, params.EXG_GAUSS_MEAN, params.EXG_GAUSS_SD, ...
+		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET);
+
+
 end
 
 
@@ -120,63 +129,41 @@ end
 
 
 
-function block = run_block (n, taskstrength, control, priming, noise_mean, noise_sd, input_c, f_gradient, ...
-			    exg_gauss_mean, exg_gauss_sd, exg_exp_lambda, threshold, rt_const)
+function block = run_block (n, params)
   
   block = zeros(n, 4);
   for i = 1:n
 				%		block(i,:) = make_rt_row_vector (run_trial (taskstrength,
-    block(i,:) = make_correct_rt_row_vector (run_trial (taskstrength,
-							control,
-							priming,
-							noise_mean,
-							noise_sd,
-							input_c,
-							f_gradient,
-							exg_gauss_mean,
-							exg_gauss_sd,
-							exg_exp_lambda,
-							threshold,
-							rt_const));
+    block(i,:) = make_correct_rt_row_vector (run_trial (params));
   end
 
+  block
 
 end
 
 
 
 
-function p = plot_single_trial ()
+function p = plot_single_trial (params)
 
     % task parameters
-  params = struct('INPUT_C', 1.5, ...
-		  'NOISE_MEAN', 0.0, ...
-		  'NOISE_SD', 0.1, ...
-		  'THRESHOLD', 100, ...
-		  'F_GRADIENT', 0.5, ...
-		  'EXG_GAUSS_MEAN', 140, ...
-		  'EXG_GAUSS_SD', 10, ...
-		  'EXG_EXP_LAMBDA', 40, ...
-		  'RT_CONST', 150, ...
-		  'TASKSTRENGTH', [0.1; 0.5],
-		  'CONTROL', [0.00, 0.00, 0.97, 0.38;
-			      0.20, 0.15, 0.00, 0.00],
-		  'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-			      0.0, 0.3, 0.3, 0.0 ]);
+  # params = struct('INPUT_C', 1.5, ...
+  # 		  'NOISE_MEAN', 0.0, ...
+  # 		  'NOISE_SD', 0.1, ...
+  # 		  'THRESHOLD', 100, ...
+  # 		  'F_GRADIENT', 0.5, ...
+  # 		  'EXG_GAUSS_MEAN', 140, ...
+  # 		  'EXG_GAUSS_SD', 10, ...
+  # 		  'EXG_EXP_LAMBDA', 40, ...
+  # 		  'RT_CONST', 150, ...
+  # 		  'TASKSTRENGTH', [0.1; 0.5],
+  # 		  'CONTROL', [0.00, 0.00, 0.97, 0.38;
+  # 			      0.20, 0.15, 0.00, 0.00],
+  # 		  'PRIMING', [0.3, 0.0, 0.0, 0.3; 
+  # 			      0.0, 0.3, 0.3, 0.0 ]);
 
 
-rt = run_trial (params.TASKSTRENGTH,
-		params.CONTROL,
-		params.PRIMING,
-		params.NOISE_MEAN,
-		params.NOISE_SD,
-		params.INPUT_C,
-		params.F_GRADIENT,
-		params.EXG_GAUSS_MEAN,
-		params.EXG_GAUSS_SD,
-		params.EXG_EXP_LAMBDA,
-		params.THRESHOLD,
-		params.RT_CONST);
+rt = run_trial (params );
 
 
 correct = make_rt_row_vector (rt);
@@ -193,39 +180,25 @@ legend ('Word Reading', 'Colour Naming');
 
 end
 
-
-function block = plot_block     ()
+function block = plot_block (params)
 
 n = 100
-params = struct('INPUT_C', 1.5, ...
-		'NOISE_MEAN', 0.0, ...
-		'NOISE_SD', 0.1, ...
-		'THRESHOLD', 100, ...
-		'F_GRADIENT', 0.5, ...
-		'EXG_GAUSS_MEAN', 140, ...
-		'EXG_GAUSS_SD', 10, ...
-		'EXG_EXP_LAMBDA', 40, ...
-		'RT_CONST', 150, ...
-		'TASKSTRENGTH', [0.1; 0.5],
-		'CONTROL', [0.00, 0.00, 0.97, 0.38;
-			    0.20, 0.15, 0.00, 0.00],
-		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-			    0.0, 0.3, 0.3, 0.0 ]);
+# params = struct('INPUT_C', 1.5, ...
+# 		'NOISE_MEAN', 0.0, ...
+# 		'NOISE_SD', 0.1, ...
+# 		'THRESHOLD', 100, ...
+# 		'F_GRADIENT', 0.5, ...
+# 		'EXG_GAUSS_MEAN', 140, ...
+# 		'EXG_GAUSS_SD', 10, ...
+# 		'EXG_EXP_LAMBDA', 40, ...
+# 		'RT_CONST', 150, ...
+# 		'TASKSTRENGTH', [0.1; 0.5],
+# 		'CONTROL', [0.00, 0.00, 0.97, 0.38;
+# 			    0.20, 0.15, 0.00, 0.00],
+# 		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
+# 			    0.0, 0.3, 0.3, 0.0 ]);
 
-
-		block = run_block (n,
-				   params.TASKSTRENGTH,
-				   params.CONTROL,
-				   params.PRIMING,
-				   params.NOISE_MEAN,
-				   params.NOISE_SD,
-				   params.INPUT_C,
-				   params.F_GRADIENT,
-				   params.EXG_GAUSS_MEAN,
-				   params.EXG_GAUSS_SD,
-				   params.EXG_EXP_LAMBDA,
-				   params.THRESHOLD,
-				   params.RT_CONST);
+		block = run_block (n, params);
 mean_rts = nanmean(block) % (exclude NaNs)
 std_rts = nanstd(block)
 errors = sum(isnan(block))/n;
@@ -256,3 +229,67 @@ legend ('Word Reading', 'Colour Naming');
 
 end
 
+% =============================================================== Load task parameters =====================
+
+    % task parameters
+
+control_default = [0.00, 0.00, 0.97, 0.38;
+		   0.20, 0.15, 0.00, 0.00];
+
+control_delayedonset = [0.00, 0.00, 0.15, 0.15;
+			0.15, 0.15, 0.00, 0.00]
+
+stim_onset = 160
+stim_onset_asynchronous = [stim_onset, stim_onset, 0, 0;
+			   0, 0, stim_onset, stim_onset]
+
+stim_onset_synchronous = [0, 0, 0, 0;
+			  0, 0, 0, 0]
+
+
+params_default = struct('INPUT_C', 1.5, ...
+		'NOISE_MEAN', 0.0, ...
+		'NOISE_SD', 0.1, ...
+		'THRESHOLD', 100, ...
+		'F_GRADIENT', 0.5, ...
+		'EXG_GAUSS_MEAN', 140, ...
+		'EXG_GAUSS_SD', 10, ...
+		'EXG_EXP_LAMBDA', 40, ...
+		'RT_CONST', 150, ...
+		'TASKSTRENGTH', [0.1; 0.5],
+		'CONTROL', control_default,
+		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
+			    0.0, 0.3, 0.3, 0.0 ],
+		'IRRELEVANT_STIM_ONSET', stim_onset_synchronous)
+
+
+params_delayedonset = struct('INPUT_C', 1.5, ...
+		'NOISE_MEAN', 0.0, ...
+		'NOISE_SD', 0.1, ...
+		'THRESHOLD', 100, ...
+		'F_GRADIENT', 0.5, ...
+		'EXG_GAUSS_MEAN', 140, ...
+		'EXG_GAUSS_SD', 10, ...
+		'EXG_EXP_LAMBDA', 40, ...
+		'RT_CONST', 150, ...
+		'TASKSTRENGTH', [0.1; 0.5],
+		'CONTROL', control_delayedonset,
+		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
+			    0.0, 0.3, 0.3, 0.0 ],
+		'IRRELEVANT_STIM_ONSET', stim_onset_asynchronous)
+
+# for debugging
+params_nonoise = struct('INPUT_C', 1.5, ...
+		'NOISE_MEAN', 0.0, ...
+		'NOISE_SD', 0.0, ...
+		'THRESHOLD', 100, ...
+		'F_GRADIENT', 0.5, ...
+		'EXG_GAUSS_MEAN', 140, ...
+		'EXG_GAUSS_SD', 0, ...
+		'EXG_EXP_LAMBDA', 40, ...
+		'RT_CONST', 150, ...
+		'TASKSTRENGTH', [0.1; 0.5],
+		'CONTROL', control_default,
+		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
+			    0.0, 0.3, 0.3, 0.0 ],
+		'IRRELEVANT_STIM_ONSET', stim_onset_synchronous)
