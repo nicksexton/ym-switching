@@ -36,6 +36,8 @@ Stim Valency - (1) modification of eqn 1 (input) - input = k(strength + priming)
 	       Neutral stimuli therefore involve changes to input AND response resolution process  
 
 Response Set Overlap - Response Gating - only relevant stimuli enter response resolution NOT IMPL
+	 Unclear from the paper how this is achieved. setting generation time to zero? Setting F to zero? (ie, as per Stim valency?)
+
 
 Stim Onset - (1) modified control inputs IMPL
              (2) add 160 to response generation times for irrelevant stimuli during response resolution process IMPL
