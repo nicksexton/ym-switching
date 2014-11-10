@@ -5,14 +5,19 @@
 function task_activation = calc_activation (input, noise_mean, noise_sd, c)
   % Implementation of Yeung & Monsell Equations 1 & 2, calculates an activation function 
 
-  task_activation = 1 - exp(-1 * c * (input + (randn(1) * noise_sd) + noise_mean));
+  # task_activation = 1 - exp(-1 * c * (input + (randn(1) * noise_sd) + noise_mean));
+				# Undocumented assumption 1: Activations are lower-bounded at 0
+#  task_activation = max (1 - exp(-1 * c * (input + (randn(1) * noise_sd) + noise_mean)), .0001);
+  input_noise = randn(2,4) * noise_sd + noise_mean;
+  task_activation = max (1 - exp(-1 * c * (input + input_noise)), .0001);
 end
 
   
 
 function generation_rate = calc_generation_rate (activation)
 
-  total_activation = sum(activation);
+  total_activation = sum(activation); # is this summing the column (correct) or a 2x4 matrix? (incorrect)
+				     # checked the calculations and it sums by column
   generation_rate = activation ./ repmat(total_activation, 2, 1);
 
 end
@@ -39,31 +44,27 @@ end
 function resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
 						 exp_lambda, irrelevant_stimulus_onset)
 
-				%r generates random number from ex-gaussian distribution 
-  # Is r generated independently for each task? Each trial?
-#     generation_time_difference = [1, 1, -1, -1; 1, 1, -1, -1] .* [generation_time(2,:) - generation_time(1,:);
-#   								   generation_time(1,:) - generation_time(2,:)]  
-     # flip the signs for colour naming, 
 
-  generation_time_plus_onset = generation_time + irrelevant_stimulus_onset
+  generation_time_plus_onset = generation_time + irrelevant_stimulus_onset;
 
   generation_time_difference = [generation_time_plus_onset(2,:) - generation_time_plus_onset(1,:);
-   				generation_time_plus_onset(1,:) - generation_time_plus_onset(2,:)]
-  
-				# insert r here if it is drawn once for all trials
-  r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda) # Calculating for each trial
+   				generation_time_plus_onset(1,:) - generation_time_plus_onset(2,:)];
 
-      resolution_time = zeros(2, 4);
-      for j = 1:columns(resolution_time)
-
-	for i = 1:rows(resolution_time)
 
 				# Where is r recalculated?? 
-	                        # Insert here if it is drawn individually for both tasks
+				# insert r here if it is drawn once for all trials
+				# at present, model does not work for delayed onset if r calc for all trials
+#  r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda) # Calculating for each trial
+      resolution_time = zeros(2, 4);
+      for j = 1:columns(resolution_time)
+	for i = 1:rows(resolution_time)
+
+	                        # Insert here if it is drawn individually for both tasks  
+	  r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda); # Calculating for each trial
 	  resolution_time(i,j) = r + calc_f (r - generation_time_difference(i,j), f_gradient);
 	end
       end
-      resolution_time
+      resolution_time;
 end
 
 
@@ -71,32 +72,26 @@ end
 function rt = calc_rt (activation, f_gradient, gauss_mean, gauss_sd, 
 		       exp_lambda, threshold, constant, irrelevant_stimulus_onset, response_gating)
 
-  constant
-  generation_time = calc_generation_time (activation, threshold)
+  generation_time = calc_generation_time (activation, threshold);
   resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
-					  exp_lambda, irrelevant_stimulus_onset)
+					  exp_lambda, irrelevant_stimulus_onset);
 
-  rt =  constant + generation_time + resolution_time
+  rt =  constant + generation_time + resolution_time;
   
 
 end
 
 
 
-# function rt = run_trial (taskstrength, control, priming, noise_mean, noise_sd, input_c, f_gradient, ...
-# 			 exg_gauss_mean, exg_gauss_sd, exg_exp_lambda, threshold, rt_const)
+
 function rt = run_trial ( params )
 
   input = zeros (2, 4);
   act = zeros (2, 4);
   rt = zeros (2, 4);
-#  for i = 1:columns(input)
-#    input = repmat(params.TASKSTRENGTH, 1, 4) + params.CONTROL(:,i) + params.PRIMING(:,i)
-#    act = calc_activation (input(:,i), params.NOISE_MEAN, params.NOISE_SD, params.INPUT_C)
-#    rt = calc_rt (act(:,i), params.F_GRADIENT, params.EXG_GAUSS_MEAN, params.EXG_GAUSS_SD, ...
-#		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET)
-#  end
-    input = repmat(params.TASKSTRENGTH, 1, 4) + params.CONTROL + params.PRIMING;
+
+#  printf ("Beginning trial!\n");
+    input = (repmat(params.TASKSTRENGTH, 1, 4) + params.PRIMING) * params.UNCONTROLLED_SCALING + params.CONTROL;
     act = calc_activation (input, params.NOISE_MEAN, params.NOISE_SD, params.INPUT_C);
     rt = calc_rt (act, params.F_GRADIENT, params.EXG_GAUSS_MEAN, params.EXG_GAUSS_SD, ...
 		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET, 
@@ -147,29 +142,10 @@ end
 
 function p = plot_single_trial (params)
 
-    % task parameters
-  # params = struct('INPUT_C', 1.5, ...
-  # 		  'NOISE_MEAN', 0.0, ...
-  # 		  'NOISE_SD', 0.1, ...
-  # 		  'THRESHOLD', 100, ...
-  # 		  'F_GRADIENT', 0.5, ...
-  # 		  'EXG_GAUSS_MEAN', 140, ...
-  # 		  'EXG_GAUSS_SD', 10, ...
-  # 		  'EXG_EXP_LAMBDA', 40, ...
-  # 		  'RT_CONST', 150, ...
-  # 		  'TASKSTRENGTH', [0.1; 0.5],
-  # 		  'CONTROL', [0.00, 0.00, 0.97, 0.38;
-  # 			      0.20, 0.15, 0.00, 0.00],
-  # 		  'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-  # 			      0.0, 0.3, 0.3, 0.0 ]);
-
-
 rt = run_trial (params );
-
 
 correct = make_rt_row_vector (rt);
 plotdata = make_correct_plot_data (correct);
-
 
 
 plot (plotdata);
@@ -183,23 +159,8 @@ end
 
 function block = plot_block (params)
 
-n = 100
-# params = struct('INPUT_C', 1.5, ...
-# 		'NOISE_MEAN', 0.0, ...
-# 		'NOISE_SD', 0.1, ...
-# 		'THRESHOLD', 100, ...
-# 		'F_GRADIENT', 0.5, ...
-# 		'EXG_GAUSS_MEAN', 140, ...
-# 		'EXG_GAUSS_SD', 10, ...
-# 		'EXG_EXP_LAMBDA', 40, ...
-# 		'RT_CONST', 150, ...
-# 		'TASKSTRENGTH', [0.1; 0.5],
-# 		'CONTROL', [0.00, 0.00, 0.97, 0.38;
-# 			    0.20, 0.15, 0.00, 0.00],
-# 		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
-# 			    0.0, 0.3, 0.3, 0.0 ]);
-
-		block = run_block (n, params);
+n = 600
+block = run_block (n, params);
 mean_rts = nanmean(block) % (exclude NaNs)
 std_rts = nanstd(block)
 errors = sum(isnan(block))/n;
@@ -237,7 +198,6 @@ end
 control_default = [0.00, 0.00, 0.97, 0.38;
 		   0.20, 0.15, 0.00, 0.00];
 
-
 stim_onset = 160
 stim_onset_asynchronous = [stim_onset, stim_onset, 0, 0;
 			   0, 0, stim_onset, stim_onset]
@@ -259,21 +219,28 @@ params_default = struct('INPUT_C', 1.5, ...
 		'CONTROL', control_default,
 		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
 			    0.0, 0.3, 0.3, 0.0 ],
+		'UNCONTROLLED_SCALING', 1.0, # scaling for strength + priming (0.6 in in neutral condition)
 		'IRRELEVANT_STIM_ONSET', stim_onset_synchronous,
-		'RESPONSE_GATING', [1, 1, 1, 1; 
+		'RESPONSE_GATING', [1, 1, 1, 1;  # should be 1.0 everywhere to reproduce original paper
 				    1, 1, 1 1])
 
 
-params_neutral = params_default
-params_neutral.F_GRADIENT = 0.0
+function params_neutral = make_neutral (params)
+		     params_neutral = params
+		     params_neutral.F_GRADIENT = 0.0
+		     params_neutral.UNCONTROLLED_SCALING = 0.6		     
+end
 
 
-params_delayedonset = params_default
+
+params_delayedonset = params_default;
 params_delayedonset.CONTROL = [0.00, 0.00, 0.15, 0.15;
 			       0.15, 0.15, 0.00, 0.00]
-		     
+# params_delayedonset.IRRELEVANT_STIM_ONSET = stim_onset_asynchronous; # Not used in the original paper
+params_delayedonset
 
-
-params_responsegating = params_default
-params_responsegating.RESPONSE_GATING = [0, 0, 1, 1; 
-					 1, 1, 0 0]
+params_responsegating = params_default;
+params_responsegating.F_GRADIENT = 0.0;
+#params_responsegating.RESPONSE_GATING = [0, 0, 1, 1; # Not used in the original paper
+#					 1, 1, 0 0]
+params_responsegating

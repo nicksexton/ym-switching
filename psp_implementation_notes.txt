@@ -31,16 +31,23 @@ response gating  [1,1,-1], (v1,R0,o0) 	 [1,1,-1] (V0,R0,o0) - figure 7
 
 
 Implementation in the model:
-Stim Valency - (1) modification of eqn 1 (input) - input = k(strength + priming) + control + noise, k=0.6 NOT IMPL
+Stim Valency - (1) modification of eqn 1 (input) - input = k(strength + priming) + control + noise, k=0.6 IMPL
                (2) value of F changed from 0.5 to 0. IMPL
 	       Neutral stimuli therefore involve changes to input AND response resolution process  
+	       CURRENT STATUS: works (ie., produces smaller RTs but same empirical pattern for default, RSO and SOA)
 
-Response Set Overlap - Response Gating - only relevant stimuli enter response resolution NOT IMPL
-	 Unclear from the paper how this is achieved. setting generation time to zero? Setting F to zero? (ie, as per Stim valency?)
+Response Set Overlap - Response Gating - (1) only relevant stimuli enter response resolution IMPL
+	 Unclear from the paper how this is achieved. setting generation time to zero?
+	 (2) Setting F to zero? (ie, as per Stim valency?) 
+	 Current Status: None of (1 & 2), (1) or (2) seems to invert the switch cost asymmetry for 
+	 given parameter settings.
+	 
 
 
-Stim Onset - (1) modified control inputs IMPL
-             (2) add 160 to response generation times for irrelevant stimuli during response resolution process IMPL
-
+Stim Onset - (1) modified control inputs IMPL !WORKS
+             (2) add 160 to response generation times for irrelevant stimuli during response resolution process 
+	     IMPL, WORKS but with v. high error rate
+	     Current status: Works for mean RTs but with v. high error rate.
+	     Misprint in paper re. control settings for 160ms delay?     
 
 
