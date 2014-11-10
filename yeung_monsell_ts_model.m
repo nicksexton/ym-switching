@@ -1,6 +1,12 @@
 # not a function file
 1;
 
+function x = rnd_var (z)
+		     # returns a random variate from vector z
+				#use to produce random vars from a desired distribution (ie ex-gaussian)
+		     x = z(randi(columns(z)));
+end
+
 
 function task_activation = calc_activation (input, noise_mean, noise_sd, c)
   % Implementation of Yeung & Monsell Equations 1 & 2, calculates an activation function 
@@ -41,8 +47,8 @@ function f = calc_f (r_minus_gen_time_diff, gradient)
 end
 
 
-function resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
-						 exp_lambda, irrelevant_stimulus_onset)
+function resolution_time = calc_resolution_time (generation_time, f_gradient, r_ex_gauss, ...
+						 irrelevant_stimulus_onset)
 
 
   generation_time_plus_onset = generation_time + irrelevant_stimulus_onset;
@@ -60,8 +66,9 @@ function resolution_time = calc_resolution_time (generation_time, f_gradient, ga
 	for i = 1:rows(resolution_time)
 
 	                        # Insert here if it is drawn individually for both tasks  
-	  r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda); # Calculating for each trial
-	  resolution_time(i,j) = r + calc_f (r - generation_time_difference(i,j), f_gradient);
+#	  r = ((randn(1) * gauss_sd) + gauss_mean) + exprnd(exp_lambda); # Calculating for each trial
+	  resolution_time(i,j) = r_ex_gauss(i,j) + calc_f (r_ex_gauss(i,j) - generation_time_difference(i,j), ...
+							   f_gradient);
 	end
       end
       resolution_time;
@@ -69,12 +76,11 @@ end
 
 
 
-function rt = calc_rt (activation, f_gradient, gauss_mean, gauss_sd, 
-		       exp_lambda, threshold, constant, irrelevant_stimulus_onset, response_gating)
+function rt = calc_rt (activation, f_gradient, r_ex_gauss, threshold, ...
+		       constant, irrelevant_stimulus_onset, response_gating)
 
   generation_time = calc_generation_time (activation, threshold);
-  resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
-					  exp_lambda, irrelevant_stimulus_onset);
+  resolution_time = calc_resolution_time (generation_time, f_gradient, r_ex_gauss, irrelevant_stimulus_onset);
 
   rt =  constant + generation_time + resolution_time;
   
@@ -84,8 +90,8 @@ end
 
 
 
-function rt = run_trial ( params )
-
+function rt = run_trial ( params, r_ex_gauss )
+# r_ex_gauss is a 2x4 matrix of ex-gauss distributed random vars
   input = zeros (2, 4);
   act = zeros (2, 4);
   rt = zeros (2, 4);
@@ -93,9 +99,8 @@ function rt = run_trial ( params )
 #  printf ("Beginning trial!\n");
     input = (repmat(params.TASKSTRENGTH, 1, 4) + params.PRIMING) * params.UNCONTROLLED_SCALING + params.CONTROL;
     act = calc_activation (input, params.NOISE_MEAN, params.NOISE_SD, params.INPUT_C);
-    rt = calc_rt (act, params.F_GRADIENT, params.EXG_GAUSS_MEAN, params.EXG_GAUSS_SD, ...
-		  params.EXG_EXP_LAMBDA, params.THRESHOLD, params.RT_CONST, params.IRRELEVANT_STIM_ONSET, 
-		  params.RESPONSE_GATING);
+    rt = calc_rt (act, params.F_GRADIENT, r_ex_gauss, params.THRESHOLD, params.RT_CONST, 
+		  params.IRRELEVANT_STIM_ONSET, params.RESPONSE_GATING);
 
 
 end
@@ -126,11 +131,15 @@ end
 
 function [new_control_strengths] =  train_model (params, iterations, 
 				   n_increment, step_increment, 
-				   n_decrement, step_decrement)
+				   n_decrement, step_decrement,
+						 ex_gauss_dist)
 # Trains the model for given number of iterations, to achieve the desired error rate
 # For n incorrect/correct responses, it increments/decrements the control setting by step size. 
 
 # first make a step size mask for increment and decrement
+
+
+
 
   params_copy = params;
   
@@ -141,7 +150,8 @@ function [new_control_strengths] =  train_model (params, iterations,
   count_error = zeros(1,4);
 
   for i = 1:iterations
-    rt_row = make_correct_rt_row_vector (run_trial (params_copy))
+    r_ex_gauss = ex_gauss_dist(randi(columns(ex_gauss_dist), 2, 4)); # randomly draw 2x4 matrix from ex_gauss_dist
+    rt_row = make_correct_rt_row_vector (run_trial (params_copy, r_ex_gauss))
     for task = 1:columns(rt_row)
       
       if isnan (rt_row(task))
@@ -168,12 +178,13 @@ end
 
 
 
-function block = run_block (n, params)
+function block = run_block (n, params, ex_gauss_dist)
   
   block = zeros(n, 4);
   for i = 1:n
 				%		block(i,:) = make_rt_row_vector (run_trial (taskstrength,
-    block(i,:) = make_correct_rt_row_vector (run_trial (params));
+    r_ex_gauss = ex_gauss_dist(randi(columns(ex_gauss_dist), 2, 4)); # randomly draw 2x4 matrix from ex_gauss_dist
+    block(i,:) = make_correct_rt_row_vector (run_trial (params, r_ex_gauss));
   end
 
   block
@@ -183,27 +194,28 @@ end
 
 
 
-function p = plot_single_trial (params)
+function p = plot_single_trial (params, ex_gauss_dist)
 
-rt = run_trial (params );
+  r_ex_gauss = ex_gauss_dist(randi(columns(ex_gauss_dist), 2, 4)); # randomly draw 2x4 matrix from ex_gauss_dist
+  rt = run_trial (params, r_ex_gauss );
 
-correct = make_rt_row_vector (rt);
-plotdata = make_correct_plot_data (correct);
+  correct = make_rt_row_vector (rt);
+  plotdata = make_correct_plot_data (correct);
+  
 
-
-plot (plotdata);
-xlim ([1, 2]);
-xlabel ('Repeat vs. Switch');
-ylabel ('Simulated RT (ms)');
-legend ('Word Reading', 'Colour Naming');
+  plot (plotdata);
+  xlim ([1, 2]);
+  xlabel ('Repeat vs. Switch');
+  ylabel ('Simulated RT (ms)');
+  legend ('Word Reading', 'Colour Naming');
 
 
 end
 
-function block = plot_block (params)
+function block = plot_block (params, ex_gauss_dist)
 
 n = 600
-block = run_block (n, params);
+block = run_block (n, params, ex_gauss_dist);
 mean_rts = nanmean(block) % (exclude NaNs)
 std_rts = nanstd(block)
 errors = sum(isnan(block))/n;
@@ -238,8 +250,17 @@ end
 
     % task parameters
 
+# init a vector of Ex-Gaussian distributed variates
+z = exg_rnd_create (10000, 500, 140, 10, 40, 20);
+# samples, burnin, mu, sigma, lambda, sd of proposal distribution
+
+
+
+
+# set the control & model parameters
 control_default = [0.00, 0.00, 0.97, 0.38;
 		   0.20, 0.15, 0.00, 0.00];
+
 
 stim_onset = 160
 stim_onset_asynchronous = [stim_onset, stim_onset, 0, 0;
@@ -282,7 +303,7 @@ params_untrained.CONTROL = [0.00, 0.00, 0.15, 0.15;
 params_delayedonset = params_default;
 params_delayedonset.CONTROL = [0.00, 0.00, 0.15, 0.15;
 			       0.15, 0.15, 0.00, 0.00]
-# params_delayedonset.IRRELEVANT_STIM_ONSET = stim_onset_asynchronous; # Not used in the original paper
+params_delayedonset.IRRELEVANT_STIM_ONSET = stim_onset_asynchronous; # Not used in the original paper
 params_delayedonset
 
 params_responsegating = params_default;
