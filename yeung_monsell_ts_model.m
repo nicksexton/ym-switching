@@ -33,11 +33,12 @@ end
 
 function f = calc_f (r_minus_gen_time_diff, gradient)
     % gradient needs to be fitted? for congruent stimuli, =0, for incongruent =0.5
-    if (r_minus_gen_time_diff > 0)
-      f = r_minus_gen_time_diff * gradient;
-    else
-      f = 0;
-    endif
+  f = max ([0, r_minus_gen_time_diff * gradient]);
+    # if (r_minus_gen_time_diff > 0)
+    #   f = r_minus_gen_time_diff * gradient;
+    # else
+    #   f = 0;
+    # endif
 end
 
 
@@ -134,36 +135,38 @@ function [new_control_strengths] =  train_model (params, iterations,
 
   params_copy = params;
   
-  mask_increment = [0, 0, step_increment, step_increment; step_increment, step_increment, 0, 0 ] 
-  mask_decrement = [0, 0, step_decrement, step_decrement; step_decrement, step_decrement, 0, 0 ] 
+  mask_increment = [0, 0, step_increment, step_increment; step_increment, step_increment, 0, 0 ]; 
+  mask_decrement = [0, 0, step_decrement, step_decrement; step_decrement, step_decrement, 0, 0 ];
 	
   count_correct = zeros(1, 4);
   count_error = zeros(1,4);
+  new_control_strengths = zeros(iterations, 4);
 
   for i = 1:iterations
-    rt_row = make_correct_rt_row_vector (run_trial (params_copy))
+    rt_row = make_correct_rt_row_vector (run_trial (params_copy));
     for task = 1:columns(rt_row)
       
       if isnan (rt_row(task))
 	count_error(task) ++;
-      else
-	count_correct ++;
+      elseif
+	count_correct(task) ++;
       endif
 
       if count_error(task) == n_increment;
 	params_copy.CONTROL(:,task) = params_copy.CONTROL(:,task) + mask_increment(:,task);
-	params_copy.CONTROL
+	params_copy.CONTROL;
 	count_error(task) = 0;
       elseif count_correct(task) == n_decrement;
 	params_copy.CONTROL(:,task) = params_copy.CONTROL(:,task) + mask_decrement(:,task);
-	params_copy.CONTROL
+	params_copy.CONTROL;
 	count_correct(task) = 0;
       endif
-
     end
+    new_control_strengths(i,:) = [params_copy.CONTROL(2,1), params_copy.CONTROL(2,2), ...
+				  params_copy.CONTROL(1,3), params_copy.CONTROL(1,4)];  
   end
-  new_control_strengths = params_copy.CONTROL
 
+  plot (new_control_strengths)
 end
 
 
@@ -282,8 +285,13 @@ params_untrained.CONTROL = [0.00, 0.00, 0.15, 0.15;
 params_delayedonset = params_default;
 params_delayedonset.CONTROL = [0.00, 0.00, 0.15, 0.15;
 			       0.15, 0.15, 0.00, 0.00]
-# params_delayedonset.IRRELEVANT_STIM_ONSET = stim_onset_asynchronous; # Not used in the original paper
+params_delayedonset.IRRELEVANT_STIM_ONSET = stim_onset_asynchronous; # Not used in the original paper
 params_delayedonset
+
+params_delayedonset_1 = params_delayedonset;
+params_delayedonset_1.CONTROL = [0.0, 0.0, 0.56, 0.15;
+				 0.10, 0.10, 0.0, 0.0]
+
 
 params_responsegating = params_default;
 params_responsegating.F_GRADIENT = 0.0;
