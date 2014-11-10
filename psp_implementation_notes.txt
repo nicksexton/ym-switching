@@ -51,3 +51,4 @@ Stim Onset - (1) modified control inputs IMPL !WORKS
 	     Misprint in paper re. control settings for 160ms delay?     
 
 
+Implemented the training procedure as it seems essential to get the correct results for the experimental conditions

@@ -124,6 +124,49 @@ function plotdata = make_correct_plot_data (correct)
 end
 
 
+function [new_control_strengths] =  train_model (params, iterations, 
+				   n_increment, step_increment, 
+				   n_decrement, step_decrement)
+# Trains the model for given number of iterations, to achieve the desired error rate
+# For n incorrect/correct responses, it increments/decrements the control setting by step size. 
+
+# first make a step size mask for increment and decrement
+
+  params_copy = params;
+  
+  mask_increment = [0, 0, step_increment, step_increment; step_increment, step_increment, 0, 0 ] 
+  mask_decrement = [0, 0, step_decrement, step_decrement; step_decrement, step_decrement, 0, 0 ] 
+	
+  count_correct = zeros(1, 4);
+  count_error = zeros(1,4);
+
+  for i = 1:iterations
+    rt_row = make_correct_rt_row_vector (run_trial (params_copy))
+    for task = 1:columns(rt_row)
+      
+      if isnan (rt_row(task))
+	count_error(task) ++;
+      else
+	count_correct ++;
+      endif
+
+      if count_error(task) == n_increment;
+	params_copy.CONTROL(:,task) = params_copy.CONTROL(:,task) + mask_increment(:,task);
+	params_copy.CONTROL
+	count_error(task) = 0;
+      elseif count_correct(task) == n_decrement;
+	params_copy.CONTROL(:,task) = params_copy.CONTROL(:,task) + mask_decrement(:,task);
+	params_copy.CONTROL
+	count_correct(task) = 0;
+      endif
+
+    end
+  end
+  new_control_strengths = params_copy.CONTROL
+
+end
+
+
 
 function block = run_block (n, params)
   
@@ -231,6 +274,9 @@ function params_neutral = make_neutral (params)
 		     params_neutral.UNCONTROLLED_SCALING = 0.6		     
 end
 
+params_untrained = params_default;
+params_untrained.CONTROL = [0.00, 0.00, 0.15, 0.15;
+			    0.15, 0.15, 0.00, 0.00]
 
 
 params_delayedonset = params_default;
