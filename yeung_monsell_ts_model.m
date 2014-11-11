@@ -218,25 +218,26 @@ function pattern = classify_behaviour (block)
 
 
   colour_sc = zeros (1,4); % store results of t-test for word switch cost
-  colour_sc(1) = mean_rts(2) - mean_rts(1);
+  colour_sc(1) = mean_rts(3) - mean_rts(4);
   [colour_sc(2), colour_sc(3), colour_sc(4)] = ...
       t_test_2 (block(isfinite(block(:,3)),3), block(isfinite(block(:,4)),4));
 
 
   pattern = struct ('Error_w_S', errors(1) < .1, # Error rate less than 10%
-		    'Error_w_NS', errors(2) < .1,
-		    'Error_c_S', errors(3) < .1,
-		    'Error_c_NS', errors(4) < .1,
-		    'SC_w', classify_switchcost (word_sc(2), word_sc(1)),
-		    'SC_c', classify_switchcost (colour_sc(2), colour_sc(1)),
-		    'SC_a', word_sc(1) > colour_sc(1));
+		    'Error_w_NS', errors(2) < .1, # 1 if errors < 10%, 0 otherwise
+		    'Error_c_S', errors(3) < .1, # 1 if errors < 10%, 0 otherwise
+		    'Error_c_NS', errors(4) < .1, # 1 if errors < 10%, 0 otherwise
+		    'SC_w', classify_switchcost (word_sc(2), word_sc(1)), # 2 = sig, 1 = n.s., +/- indicates dir
+		    'SC_c', classify_switchcost (colour_sc(2), colour_sc(1)), # 2 = sig, 1 = n.s., +/- indicates dir
+		    'SC_a', word_sc(1) > colour_sc(1)); # 1 = SC asymmetry, 0 = no SC asymmetry,
 
+  
 
 end
 
 
 function p = plot_single_trial (params)
-
+# Plots results of a single trial
 rt = run_trial (params );
 
 correct = make_rt_row_vector (rt);
@@ -248,7 +249,6 @@ xlim ([1, 2]);
 xlabel ('Repeat vs. Switch');
 ylabel ('Simulated RT (ms)');
 legend ('Word Reading', 'Colour Naming');
-
 
 end
 
@@ -285,6 +285,43 @@ ylabel ('Error Rate (%)');
 legend ('Word Reading', 'Colour Naming');
 
 end
+
+function [pattern] = ym_model_wrapper (params) # params must be column vector
+# First version of PSP in YM model.
+# Explore 4-dimensional parameter space defined by 4 control parameters
+# Accepts input [word switch; word nonswitch; colour switch; colour nonswitch]
+
+trials = 600;
+
+model_params  = struct('INPUT_C', 1.5, ...
+		'NOISE_MEAN', 0.0, ...
+		'NOISE_SD', 0.1, ...
+		'THRESHOLD', 100, ...
+		'F_GRADIENT', 0.5, ...
+		'EXG_GAUSS_MEAN', 140, ...
+		'EXG_GAUSS_SD', 10, ...
+		'EXG_EXP_LAMBDA', 40, ...
+		'RT_CONST', 150, ...
+		'TASKSTRENGTH', [0.1; 0.5],
+		'CONTROL', [0.00, 0.00, params(3), params(4);
+			    params(1), params(2), 0.00, 0.00],
+		'PRIMING', [0.3, 0.0, 0.0, 0.3; 
+			    0.0, 0.3, 0.3, 0.0 ],
+		'UNCONTROLLED_SCALING', 1.0, # scaling for strength + priming (0.6 in in neutral condition)
+		'IRRELEVANT_STIM_ONSET', [0, 0, 0, 0;
+					  0, 0, 0, 0],
+		'RESPONSE_GATING', [1, 1, 1, 1;  # should be 1.0 everywhere to reproduce original paper
+				    1, 1, 1 1]);
+
+
+
+results = run_block (trials, model_params);
+p = classify_behaviour (results); # returns a struct
+pattern = [p.Error_w_S, p.Error_w_NS, p.Error_c_S, p.Error_c_NS, p.SC_w, p.SC_c, p.SC_a]; # return p as row vector
+
+
+end
+
 
 % =============================================================== Load task parameters =====================
 
