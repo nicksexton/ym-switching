@@ -15,19 +15,15 @@ end
   
 
 function generation_rate = calc_generation_rate (activation)
-
   total_activation = sum(activation); # is this summing the column (correct) or a 2x4 matrix? (incorrect)
 				     # checked the calculations and it sums by column
   generation_rate = activation ./ repmat(total_activation, 2, 1);
-
 end
 
 
 function generation_time = calc_generation_time (activation, threshold)
-
   generation_rate = calc_generation_rate (activation);
   generation_time = repmat(threshold, 2, 4)./generation_rate;
-
 end
 
 
@@ -45,12 +41,9 @@ end
 function resolution_time = calc_resolution_time (generation_time, f_gradient, gauss_mean, gauss_sd, 
 						 exp_lambda, irrelevant_stimulus_onset)
 
-
   generation_time_plus_onset = generation_time + irrelevant_stimulus_onset;
-
   generation_time_difference = [generation_time_plus_onset(2,:) - generation_time_plus_onset(1,:);
    				generation_time_plus_onset(1,:) - generation_time_plus_onset(2,:)];
-
 
 				# Where is r recalculated?? 
 				# insert r here if it is drawn once for all trials
@@ -172,18 +165,74 @@ end
 
 
 function block = run_block (n, params)
-  
   block = zeros(n, 4);
   for i = 1:n
 				%		block(i,:) = make_rt_row_vector (run_trial (taskstrength,
     block(i,:) = make_correct_rt_row_vector (run_trial (params));
   end
-
-  block
-
 end
 
 
+function return_bit = classify_switchcost (pvalue, difference_in_means)
+  if (pvalue < .05) # is p < .05?
+    if (difference_in_means > 0) 
+      return_bit = 2; # switch cost is positive and p < .05
+    else
+      return_bit = -2; # switch cost is negative and p < .05
+    endif
+  else # test is not significant
+    if (difference_in_means > 0) 
+      return_bit = 1; # if switch cost is positive but p > .05
+    else
+      return_bit = -1; # switch cost is negative but p > .05
+    endif
+  endif
+
+  
+end
+
+function pattern = classify_behaviour (block)
+  errors = sum(isnan(block))/rows(block);
+  mean_rts = nanmean(block); % (exclude NaNs)
+  std_rts = nanstd(block);
+
+  word_sc = zeros (1,4); % store results of t-test for word switch cost
+  word_sc(1) = mean_rts(1) - mean_rts(2);
+  [word_sc(2), word_sc(3), word_sc(4)] = ...
+      t_test_2 (block(isfinite(block(:,1)),1), block(isfinite(block(:,2)),2));
+
+  # t_test_2 returns [pval, t, df]. isfinite construction used to filter NaN values
+  # if (word_sc(2) < .05) # is p < .05?
+  #   if (word_sc(1) > 0) 
+  #     word_sc_bit = 2; # switch cost is positive and p < .05
+  #   else
+  #     word_sc_bit = -2; # switch cost is negative and p < .05
+  #   endif
+  # else # test is not significant
+  #   if (word_sc(1) > 0) 
+  #     word_sc_bit = 1; # if switch cost is positive but p > .05
+  #   else
+  #     word_sc_bit = -1; # switch cost is negative but p > .05
+  #   endif
+  # endif
+
+
+  colour_sc = zeros (1,4); % store results of t-test for word switch cost
+  colour_sc(1) = mean_rts(2) - mean_rts(1);
+  [colour_sc(2), colour_sc(3), colour_sc(4)] = ...
+      t_test_2 (block(isfinite(block(:,3)),3), block(isfinite(block(:,4)),4));
+
+
+  pattern = struct ('Error_w_S', errors(1) < .1, # Error rate less than 10%
+		    'Error_w_NS', errors(2) < .1,
+		    'Error_c_S', errors(3) < .1,
+		    'Error_c_NS', errors(4) < .1,
+		    'SC_w', classify_switchcost (word_sc(2), word_sc(1)),
+		    'SC_c', classify_switchcost (colour_sc(2), colour_sc(1)),
+		    'SC_a', word_sc(1) > colour_sc(1));
+
+
+end
 
 
 function p = plot_single_trial (params)
